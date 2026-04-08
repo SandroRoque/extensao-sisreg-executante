@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "SISREG Executante",
+  "version": "1.0.0",
+  "description": "Extensao MV3 para melhorias no perfil executante do SISREG.",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "128": "icons/icon128.png"
+  },
+  "host_permissions": [
+    "https://sisregiii.saude.gov.br/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://sisregiii.saude.gov.br/*"
+      ],
+      "js": [
+        "src/content.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": true
+    }
+  ],
+  "action": {
+    "default_title": "SISREG Executante",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "128": "icons/icon128.png"
+    }
+  }
+}
