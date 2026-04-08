@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Política de Privacidade | SISREG Executante</title>
+  <style>
+    :root {
+      --bg: #f4f1e8;
+      --card: #fffdf8;
+      --text: #1f2a2e;
+      --muted: #58656d;
+      --accent: #0b6b6f;
+      --border: #d8d0bf;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at top left, rgba(11, 107, 111, 0.08), transparent 35%),
+        linear-gradient(180deg, #f7f4eb 0%, var(--bg) 100%);
+      color: var(--text);
+      font: 16px/1.6 Georgia, "Times New Roman", serif;
+    }
+
+    .wrap {
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 40px 20px 64px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 32px 28px;
+      box-shadow: 0 18px 45px rgba(31, 42, 46, 0.08);
+    }
+
+    h1, h2 {
+      line-height: 1.2;
+      margin: 0 0 16px;
+      font-family: "Palatino Linotype", Palatino, Georgia, serif;
+    }
+
+    h1 {
+      font-size: 2.2rem;
+      margin-bottom: 8px;
+    }
+
+    h2 {
+      font-size: 1.25rem;
+      margin-top: 30px;
+    }
+
+    p, ul {
+      margin: 0 0 16px;
+    }
+
+    ul {
+      padding-left: 22px;
+    }
+
+    .eyebrow,
+    .updated,
+    .footer {
+      color: var(--muted);
+    }
+
+    a {
+      color: var(--accent);
+    }
+
+    .footer {
+      margin-top: 28px;
+      font-size: 0.95rem;
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <article class="card">
+      <div class="eyebrow">SISREG Executante</div>
+      <h1>Política de Privacidade</h1>
+      <p class="updated">Última atualização: 8 de abril de 2026</p>
+
+      <h2>1. Apresentação</h2>
+      <p>Esta Política de Privacidade descreve como a extensão <strong>SISREG Executante</strong> trata dados acessados durante seu uso no Google Chrome.</p>
+      <p>A extensão foi desenvolvida para auxiliar operadores do perfil <strong>EXECUTANTE INT</strong> no SISREG III, adicionando funcionalidades de apoio às rotinas de internação, transferência e alta diretamente na interface do sistema.</p>
+      <p>Esta extensão não é oficial e não possui vínculo com o DATASUS, com o Ministério da Saúde ou com qualquer órgão público responsável pelo SISREG.</p>
+
+      <h2>2. Quais dados a extensão acessa</h2>
+      <p>Para funcionar, a extensão interage com a interface web do próprio SISREG III aberta pelo usuário autenticado.</p>
+      <p>Isso significa que ela atua sobre páginas do sistema que podem exibir dados sensíveis já disponibilizados pelo SISREG ao operador, na sessão regular de uso do sistema.</p>
+      <p>A extensão não cria base de dados própria de pacientes, não mantém cadastro paralelo e não realiza coleta independente fora do contexto da página acessada pelo usuário.</p>
+      <p>Ao executar suas funcionalidades, ela pode interagir com elementos da página que contenham, por exemplo:</p>
+      <ul>
+        <li>dados exibidos nas telas de internação, transferência e alta</li>
+        <li>nome do paciente</li>
+        <li>CNS e outros identificadores exibidos pelo sistema</li>
+        <li>procedimento, clínica, datas e informações relacionadas à internação</li>
+        <li>ficha do paciente exibida pelo próprio SISREG</li>
+        <li>número de AIH quando disponível no fluxo operacional do sistema</li>
+      </ul>
+      <p>Em outras palavras, a extensão não busca informações fora do SISREG nem amplia o escopo de acesso do operador; ela apenas reorganiza, apresenta e utiliza, dentro do navegador, informações já acessíveis ao usuário no próprio sistema para viabilizar as funcionalidades descritas.</p>
+
+      <h2>3. Como esses dados são usados</h2>
+      <p>Os dados acessados são utilizados exclusivamente para viabilizar as funcionalidades da extensão dentro do SISREG III, incluindo:</p>
+      <ul>
+        <li>adicionar marcadores visuais e melhorias de interface</li>
+        <li>listar pacientes internados</li>
+        <li>permitir visualização da ficha do paciente na própria tela</li>
+        <li>apoiar rotinas de transferência entre clínicas</li>
+        <li>apoiar rotinas de alta e obtenção do número da AIH</li>
+      </ul>
+      <p>A extensão não utiliza esses dados para publicidade, perfilização, analytics, venda de informações ou qualquer finalidade não relacionada ao seu propósito operacional.</p>
+
+      <h2>4. Compartilhamento de dados</h2>
+      <p>A extensão não vende, não compartilha e não transfere dados para servidores de terceiros.</p>
+      <p>Os dados tratados pela extensão permanecem no navegador do usuário e no próprio ambiente do SISREG III, utilizando a sessão autenticada já existente do operador para acessar páginas internas do sistema quando necessário.</p>
+
+      <h2>5. Armazenamento local</h2>
+      <p>A extensão armazena localmente no navegador apenas a informação mínima necessária para a funcionalidade <strong>Já Internado</strong>, usada como apoio visual na interface.</p>
+      <p>Na prática, esse armazenamento local contém somente:</p>
+      <ul>
+        <li>o identificador da solicitação exibida pelo SISREG</li>
+        <li>um valor booleano indicando se aquela solicitação foi marcada pelo usuário como <strong>Já Internado</strong></li>
+      </ul>
+      <p>Esse armazenamento local não inclui, por si só:</p>
+      <ul>
+        <li>nome do paciente</li>
+        <li>CNS</li>
+        <li>ficha do paciente</li>
+        <li>número de AIH</li>
+        <li>procedimento</li>
+        <li>dados clínicos, observações ou qualquer outro conteúdo textual da tela</li>
+      </ul>
+      <p>Ou seja, a extensão não grava localmente uma cópia dos dados sensíveis exibidos pelo SISREG. Fora do próprio SISREG, ela persiste apenas o marcador visual associado ao identificador da solicitação.</p>
+      <ul>
+        <li>Esse armazenamento é mantido localmente no navegador do usuário</li>
+        <li>Não é enviado a servidores de terceiros</li>
+        <li>Não é usado para rastreamento, publicidade ou perfilização</li>
+      </ul>
+
+      <h2>6. Permissões e acesso ao site</h2>
+      <p>A extensão solicita acesso ao domínio <code>https://sisregiii.saude.gov.br/*</code>.</p>
+      <p>Esse acesso é necessário para:</p>
+      <ul>
+        <li>ler e ajustar elementos da interface do SISREG III</li>
+        <li>consultar páginas internas usadas pelas funcionalidades da extensão</li>
+        <li>exibir conteúdos do próprio sistema de forma mais prática ao operador</li>
+      </ul>
+
+      <h2>7. Segurança</h2>
+      <p>A extensão foi desenvolvida para minimizar o tratamento de dados ao estritamente necessário para suas funcionalidades.</p>
+      <p>Ela não cria conta de usuário própria, não coleta senha fora do fluxo normal do SISREG, não instala código remoto e não envia dados operacionais para serviços externos.</p>
+
+      <h2>8. Limitações</h2>
+      <p>O funcionamento da extensão depende da estrutura atual do SISREG III. Mudanças nas páginas, menus, formulários ou endpoints do sistema podem impactar seu funcionamento.</p>
+
+      <h2>9. Alterações nesta política</h2>
+      <p>Esta Política de Privacidade pode ser atualizada para refletir mudanças na extensão, em seus recursos ou em exigências aplicáveis da Chrome Web Store.</p>
+      <p>A versão mais recente será sempre a publicada neste repositório.</p>
+
+      <h2>10. Contato</h2>
+      <p>Para dúvidas, sugestões ou relato de problemas, utilize o repositório do projeto:</p>
+      <ul>
+        <li><a href="https://github.com/SandroRoque/extensao-sisreg-executante">https://github.com/SandroRoque/extensao-sisreg-executante</a></li>
+      </ul>
+
+      <p class="footer">Página pública para uso com GitHub Pages e Chrome Web Store.</p>
+    </article>
+  </main>
+</body>
+</html>
