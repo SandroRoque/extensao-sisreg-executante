@@ -18,6 +18,14 @@
     let clinicOptionsCache = null;
     let latestTransferResults = [];
     let latestReleaseResults = [];
+    let latestTransferSortState = {
+        key: 'dt_internacao',
+        direction: 'asc'
+    };
+    let latestReleaseSortState = {
+        key: 'dt_internacao',
+        direction: 'asc'
+    };
     let latestReleaseSearchState = {
         clinica: '',
         cnsPaciente: '',
@@ -745,6 +753,148 @@
         return response.text();
     }
 
+    function sanitizeFichaTree(root) {
+        root.querySelectorAll('script, link, style, img, iframe, frame, object, embed, meta, base').forEach((node) => {
+            node.remove();
+        });
+
+        root.querySelectorAll('*').forEach((element) => {
+            Array.from(element.attributes).forEach((attribute) => {
+                const attrName = attribute.name.toLowerCase();
+                const attrValue = attribute.value.trim().toLowerCase();
+
+                if (attrName.startsWith('on') || attrName === 'srcdoc') {
+                    element.removeAttribute(attribute.name);
+                    return;
+                }
+
+                if (
+                    (attrName === 'href' ||
+                        attrName === 'src' ||
+                        attrName === 'action' ||
+                        attrName === 'formaction' ||
+                        attrName === 'xlink:href') &&
+                    (attrValue.startsWith('javascript:') || attrValue.startsWith('data:text/html'))
+                ) {
+                    element.removeAttribute(attribute.name);
+                }
+            });
+        });
+
+        root.querySelectorAll('br').forEach((node) => {
+            if (!node.parentElement || node.parentElement.children.length > 3) {
+                node.remove();
+            }
+        });
+
+        root.querySelectorAll('input, select, textarea, button').forEach((field) => {
+            field.disabled = true;
+        });
+
+        root.querySelectorAll('form').forEach((form) => {
+            form.removeAttribute('action');
+            form.removeAttribute('onsubmit');
+            form.removeAttribute('target');
+        });
+
+        root.querySelectorAll('a').forEach((link) => {
+            link.removeAttribute('href');
+            link.removeAttribute('target');
+        });
+    }
+
+    function createFichaStyleElement(ownerDocument) {
+        const style = ownerDocument.createElement('style');
+        style.textContent = `
+            .sisreg-ficha-view {
+                color: #20303a;
+                font: 13px/1.45 "Segoe UI", Tahoma, sans-serif;
+            }
+            .sisreg-ficha-view * {
+                box-sizing: border-box;
+            }
+            .sisreg-ficha-view table {
+                width: 100%;
+                border-collapse: separate;
+                border-spacing: 0;
+                margin: 0 0 14px;
+                background: #ffffff;
+                border: 1px solid #d5dfe5;
+                border-radius: 10px;
+                overflow: hidden;
+            }
+            .sisreg-ficha-view td,
+            .sisreg-ficha-view th {
+                padding: 8px 10px;
+                border-bottom: 1px solid #e7edf1;
+                vertical-align: top;
+                word-break: break-word;
+            }
+            .sisreg-ficha-view tr:last-child > td,
+            .sisreg-ficha-view tr:last-child > th {
+                border-bottom: 0;
+            }
+            .sisreg-ficha-view .td_titulo_tabela,
+            .sisreg-ficha-view .table_listagem .td_titulo_tabela,
+            .sisreg-ficha-view td[bgcolor="#AABFBF"],
+            .sisreg-ficha-view th[bgcolor="#AABFBF"] {
+                background: linear-gradient(180deg, #e8f0f3 0%, #dde8ec 100%);
+                color: #17313d;
+                font-weight: 700;
+                font-size: 13px;
+                letter-spacing: 0.02em;
+                text-transform: uppercase;
+            }
+            .sisreg-ficha-view .td_titulo_campo,
+            .sisreg-ficha-view td[align="right"] {
+                background: #f5f8fa;
+                color: #46606d;
+                font-weight: 600;
+                width: 26%;
+            }
+            .sisreg-ficha-view input,
+            .sisreg-ficha-view select,
+            .sisreg-ficha-view textarea,
+            .sisreg-ficha-view button {
+                width: 100%;
+                max-width: 100%;
+                padding: 8px 10px;
+                border: 1px solid #c6d3da;
+                border-radius: 8px;
+                background: #f6f8fa;
+                color: #29404c;
+                font: inherit;
+            }
+            .sisreg-ficha-view textarea {
+                min-height: 96px;
+                resize: vertical;
+            }
+            .sisreg-ficha-view input:disabled,
+            .sisreg-ficha-view select:disabled,
+            .sisreg-ficha-view textarea:disabled,
+            .sisreg-ficha-view button:disabled {
+                opacity: 1;
+                cursor: default;
+            }
+            .sisreg-ficha-view form {
+                margin: 0;
+            }
+            .sisreg-ficha-view center {
+                text-align: left;
+            }
+            .sisreg-ficha-view hr {
+                border: 0;
+                border-top: 1px solid #dde5ea;
+                margin: 12px 0;
+            }
+            .sisreg-ficha-view .hidden,
+            .sisreg-ficha-view [style*="display:none"] {
+                display: none !important;
+            }
+        `;
+        return style;
+    }
+
     function extractFichaContent(html) {
         const doc = new DOMParser().parseFromString(html, 'text/html');
         const mainPage = doc.querySelector('#main_page');
@@ -752,113 +902,27 @@
         const source = mainPage || body;
 
         if (!source) {
-            return '<div>Ficha nao disponivel.</div>';
+            const fallback = document.createElement('div');
+            fallback.textContent = 'Ficha nao disponivel.';
+            return fallback;
         }
 
         const clone = source.cloneNode(true);
-        clone.querySelectorAll('script').forEach((node) => node.remove());
-        clone.querySelectorAll('link, style').forEach((node) => node.remove());
-        clone.querySelectorAll('img').forEach((node) => node.remove());
-        clone.querySelectorAll('br').forEach((node) => {
-            if (!node.parentElement || node.parentElement.children.length > 3) {
-                node.remove();
-            }
-        });
-        clone.querySelectorAll('input, select, textarea, button').forEach((field) => {
-            field.disabled = true;
+        sanitizeFichaTree(clone);
+
+        const wrapper = document.createElement('div');
+        wrapper.appendChild(createFichaStyleElement(document));
+
+        const view = document.createElement('div');
+        view.className = 'sisreg-ficha-view';
+
+        Array.from(clone.childNodes).forEach((childNode) => {
+            view.appendChild(document.importNode(childNode, true));
         });
 
-        const style = `
-            <style>
-                .sisreg-ficha-view {
-                    color: #20303a;
-                    font: 13px/1.45 "Segoe UI", Tahoma, sans-serif;
-                }
-                .sisreg-ficha-view * {
-                    box-sizing: border-box;
-                }
-                .sisreg-ficha-view table {
-                    width: 100%;
-                    border-collapse: separate;
-                    border-spacing: 0;
-                    margin: 0 0 14px;
-                    background: #ffffff;
-                    border: 1px solid #d5dfe5;
-                    border-radius: 10px;
-                    overflow: hidden;
-                }
-                .sisreg-ficha-view td,
-                .sisreg-ficha-view th {
-                    padding: 8px 10px;
-                    border-bottom: 1px solid #e7edf1;
-                    vertical-align: top;
-                    word-break: break-word;
-                }
-                .sisreg-ficha-view tr:last-child > td,
-                .sisreg-ficha-view tr:last-child > th {
-                    border-bottom: 0;
-                }
-                .sisreg-ficha-view .td_titulo_tabela,
-                .sisreg-ficha-view .table_listagem .td_titulo_tabela,
-                .sisreg-ficha-view td[bgcolor="#AABFBF"],
-                .sisreg-ficha-view th[bgcolor="#AABFBF"] {
-                    background: linear-gradient(180deg, #e8f0f3 0%, #dde8ec 100%);
-                    color: #17313d;
-                    font-weight: 700;
-                    font-size: 13px;
-                    letter-spacing: 0.02em;
-                    text-transform: uppercase;
-                }
-                .sisreg-ficha-view .td_titulo_campo,
-                .sisreg-ficha-view td[align="right"] {
-                    background: #f5f8fa;
-                    color: #46606d;
-                    font-weight: 600;
-                    width: 26%;
-                }
-                .sisreg-ficha-view input,
-                .sisreg-ficha-view select,
-                .sisreg-ficha-view textarea,
-                .sisreg-ficha-view button {
-                    width: 100%;
-                    max-width: 100%;
-                    padding: 8px 10px;
-                    border: 1px solid #c6d3da;
-                    border-radius: 8px;
-                    background: #f6f8fa;
-                    color: #29404c;
-                    font: inherit;
-                }
-                .sisreg-ficha-view textarea {
-                    min-height: 96px;
-                    resize: vertical;
-                }
-                .sisreg-ficha-view input:disabled,
-                .sisreg-ficha-view select:disabled,
-                .sisreg-ficha-view textarea:disabled,
-                .sisreg-ficha-view button:disabled {
-                    opacity: 1;
-                    cursor: default;
-                }
-                .sisreg-ficha-view form {
-                    margin: 0;
-                }
-                .sisreg-ficha-view center {
-                    text-align: left;
-                }
-                .sisreg-ficha-view hr {
-                    border: 0;
-                    border-top: 1px solid #dde5ea;
-                    margin: 12px 0;
-                }
-                .sisreg-ficha-view .hidden,
-                .sisreg-ficha-view [style*="display:none"] {
-                    display: none !important;
-                }
-            </style>
-        `;
+        wrapper.appendChild(view);
 
-        return `${style}<div class="sisreg-ficha-view">${clone.innerHTML}</div>`;
+        return wrapper;
     }
 
     function showTransferResultsView(modal) {
@@ -866,11 +930,11 @@
         modal.querySelector('#sisreg-transfer-detail-view').style.display = 'none';
     }
 
-    function showTransferDetailView(modal, title, html) {
+    function showTransferDetailView(modal, title, contentNode) {
         modal.querySelector('#sisreg-transfer-results-view').style.display = 'none';
         modal.querySelector('#sisreg-transfer-detail-view').style.display = 'block';
         modal.querySelector('#sisreg-transfer-detail-title').textContent = title;
-        modal.querySelector('#sisreg-transfer-detail-content').innerHTML = html;
+        modal.querySelector('#sisreg-transfer-detail-content').replaceChildren(contentNode);
     }
 
     async function openFichaInModal({ statusNode, title, onRender, codSolicitacaoFicha, errorLabel }) {
@@ -903,62 +967,190 @@
         });
     }
 
-    function buildResultsTableRows(results, destinationValue) {
-        if (results.length === 0) {
-            return `
-                <tr>
-                    <td colspan="6" style="padding:12px; text-align:center;">Nenhum paciente encontrado.</td>
-                </tr>
-            `;
+    function clearElementChildren(node) {
+        while (node.firstChild) {
+            node.removeChild(node.firstChild);
         }
-
-        return results.map((item) => `
-            <tr data-sisreg-transfer-row="${item.cod_solicitacao_ficha}">
-                <td style="padding:6px; border:1px solid #c9d2d8;">${item.dt_internacao}</td>
-                <td style="padding:6px; border:1px solid #c9d2d8;">${item.paciente}</td>
-                <td style="padding:6px; border:1px solid #c9d2d8;">${item.procedimento}</td>
-                <td style="padding:6px; border:1px solid #c9d2d8;">${item.clinica}</td>
-                <td style="padding:6px; border:1px solid #c9d2d8;">${item.cod_solicitacao_ficha}</td>
-                <td style="padding:6px; border:1px solid #c9d2d8; white-space:nowrap;">
-                    <button type="button" data-sisreg-open-ficha="${item.cod_solicitacao_ficha}">Abrir ficha</button>
-                    <button type="button" data-sisreg-transfer-one="${item.cod_solicitacao_ficha}" ${destinationValue ? '' : 'disabled'}>Transferir</button>
-                </td>
-            </tr>
-        `).join('');
     }
 
-    function buildReleaseResultsTableRows(results) {
-        if (results.length === 0) {
-            return `
-                <tr>
-                    <td colspan="7" style="padding:12px; text-align:center;">Nenhum paciente encontrado.</td>
-                </tr>
-            `;
+    function compareNullableValues(a, b) {
+        if (a == null && b == null) return 0;
+        if (a == null) return 1;
+        if (b == null) return -1;
+        if (a < b) return -1;
+        if (a > b) return 1;
+        return 0;
+    }
+
+    function sortInternacaoResults(results, sortState) {
+        const items = [...results];
+        const factor = sortState.direction === 'desc' ? -1 : 1;
+
+        items.sort((left, right) => {
+            let primary = 0;
+
+            if (sortState.key === 'dt_internacao') {
+                primary = compareNullableValues(parseSisregDate(left.dt_internacao)?.getTime() ?? null, parseSisregDate(right.dt_internacao)?.getTime() ?? null);
+            } else if (sortState.key === 'paciente') {
+                primary = compareNullableValues(normalizeText(left.paciente), normalizeText(right.paciente));
+            } else if (sortState.key === 'procedimento') {
+                primary = compareNullableValues(normalizeText(left.procedimento), normalizeText(right.procedimento));
+            } else if (sortState.key === 'clinica') {
+                primary = compareNullableValues(normalizeText(left.clinica), normalizeText(right.clinica));
+            }
+
+            if (primary !== 0) {
+                return primary * factor;
+            }
+
+            const fallbackDate = compareNullableValues(parseSisregDate(left.dt_internacao)?.getTime() ?? null, parseSisregDate(right.dt_internacao)?.getTime() ?? null);
+            if (fallbackDate !== 0) {
+                return fallbackDate;
+            }
+
+            return compareNullableValues(normalizeText(left.paciente), normalizeText(right.paciente));
+        });
+
+        return items;
+    }
+
+    function getSortIndicator(sortState, key) {
+        if (sortState.key !== key) {
+            return '';
         }
 
-        return results.map((item) => `
-            <tr data-sisreg-release-row="${item.cod_solicitacao_ficha}">
-                <td style="padding:6px; border:1px solid #c9d2d8;">${item.dt_internacao}</td>
-                <td style="padding:6px; border:1px solid #c9d2d8;">${item.paciente}</td>
-                <td style="padding:6px; border:1px solid #c9d2d8;">${item.procedimento}</td>
-                <td style="padding:6px; border:1px solid #c9d2d8;">${item.clinica}</td>
-                <td style="padding:6px; border:1px solid #c9d2d8;">${item.cod_solicitacao_ficha}</td>
-                <td style="padding:6px; border:1px solid #c9d2d8;" data-sisreg-release-aih="${item.cod_solicitacao_ficha}">-</td>
-                <td style="padding:6px; border:1px solid #c9d2d8; white-space:nowrap;">
-                    <button type="button" data-sisreg-release-open="${item.cod_solicitacao_ficha}">Abrir ficha</button>
-                    <button type="button" data-sisreg-release-one="${item.cod_solicitacao_ficha}">Efetuar alta</button>
-                </td>
-            </tr>
-        `).join('');
+        return sortState.direction === 'asc' ? ' ▲' : ' ▼';
+    }
+
+    function updateSortableHeaderLabels(modal, selector, sortState) {
+        modal.querySelectorAll(selector).forEach((header) => {
+            const key = header.getAttribute('data-sisreg-sort-key');
+            const label = header.getAttribute('data-sisreg-sort-label') || header.textContent.trim();
+            header.textContent = `${label}${getSortIndicator(sortState, key)}`;
+        });
+    }
+
+    function toggleSortState(currentState, key) {
+        if (currentState.key === key) {
+            return {
+                key,
+                direction: currentState.direction === 'asc' ? 'desc' : 'asc'
+            };
+        }
+
+        return {
+            key,
+            direction: 'asc'
+        };
+    }
+
+    function createStyledCell(ownerDocument, textValue, styleText) {
+        const cell = ownerDocument.createElement('td');
+        cell.style.cssText = styleText;
+        cell.textContent = textValue;
+        return cell;
+    }
+
+    function appendEmptyStateRow(tbody, colspan, message) {
+        const ownerDocument = tbody.ownerDocument;
+        const row = ownerDocument.createElement('tr');
+        const cell = ownerDocument.createElement('td');
+        cell.colSpan = colspan;
+        cell.style.cssText = 'padding:12px; text-align:center;';
+        cell.textContent = message;
+        row.appendChild(cell);
+        tbody.appendChild(row);
+    }
+
+    function appendTransferResultRows(tbody, results, destinationValue) {
+        const ownerDocument = tbody.ownerDocument;
+
+        results.forEach((item) => {
+            const row = ownerDocument.createElement('tr');
+            row.setAttribute('data-sisreg-transfer-row', item.cod_solicitacao_ficha);
+
+            row.appendChild(createStyledCell(ownerDocument, item.dt_internacao, 'padding:6px; border:1px solid #c9d2d8;'));
+            row.appendChild(createStyledCell(ownerDocument, item.paciente, 'padding:6px; border:1px solid #c9d2d8;'));
+            row.appendChild(createStyledCell(ownerDocument, item.procedimento, 'padding:6px; border:1px solid #c9d2d8;'));
+            row.appendChild(createStyledCell(ownerDocument, item.clinica, 'padding:6px; border:1px solid #c9d2d8;'));
+            row.appendChild(createStyledCell(ownerDocument, item.cod_solicitacao_ficha, 'padding:6px; border:1px solid #c9d2d8;'));
+
+            const actionsCell = ownerDocument.createElement('td');
+            actionsCell.style.cssText = 'padding:6px; border:1px solid #c9d2d8; white-space:nowrap;';
+
+            const openButton = ownerDocument.createElement('button');
+            openButton.type = 'button';
+            openButton.setAttribute('data-sisreg-open-ficha', item.cod_solicitacao_ficha);
+            openButton.textContent = 'Abrir ficha';
+
+            const transferButton = ownerDocument.createElement('button');
+            transferButton.type = 'button';
+            transferButton.setAttribute('data-sisreg-transfer-one', item.cod_solicitacao_ficha);
+            transferButton.textContent = 'Transferir';
+            transferButton.disabled = !destinationValue;
+
+            actionsCell.appendChild(openButton);
+            actionsCell.appendChild(ownerDocument.createTextNode(' '));
+            actionsCell.appendChild(transferButton);
+            row.appendChild(actionsCell);
+
+            tbody.appendChild(row);
+        });
+    }
+
+    function appendReleaseResultRows(tbody, results) {
+        const ownerDocument = tbody.ownerDocument;
+
+        results.forEach((item) => {
+            const row = ownerDocument.createElement('tr');
+            row.setAttribute('data-sisreg-release-row', item.cod_solicitacao_ficha);
+
+            row.appendChild(createStyledCell(ownerDocument, item.dt_internacao, 'padding:6px; border:1px solid #c9d2d8;'));
+            row.appendChild(createStyledCell(ownerDocument, item.paciente, 'padding:6px; border:1px solid #c9d2d8;'));
+            row.appendChild(createStyledCell(ownerDocument, item.procedimento, 'padding:6px; border:1px solid #c9d2d8;'));
+            row.appendChild(createStyledCell(ownerDocument, item.clinica, 'padding:6px; border:1px solid #c9d2d8;'));
+            row.appendChild(createStyledCell(ownerDocument, item.cod_solicitacao_ficha, 'padding:6px; border:1px solid #c9d2d8;'));
+
+            const aihCell = createStyledCell(ownerDocument, '-', 'padding:6px; border:1px solid #c9d2d8;');
+            aihCell.setAttribute('data-sisreg-release-aih', item.cod_solicitacao_ficha);
+            row.appendChild(aihCell);
+
+            const actionsCell = ownerDocument.createElement('td');
+            actionsCell.style.cssText = 'padding:6px; border:1px solid #c9d2d8; white-space:nowrap;';
+
+            const openButton = ownerDocument.createElement('button');
+            openButton.type = 'button';
+            openButton.setAttribute('data-sisreg-release-open', item.cod_solicitacao_ficha);
+            openButton.textContent = 'Abrir ficha';
+
+            const releaseButton = ownerDocument.createElement('button');
+            releaseButton.type = 'button';
+            releaseButton.setAttribute('data-sisreg-release-one', item.cod_solicitacao_ficha);
+            releaseButton.textContent = 'Efetuar alta';
+
+            actionsCell.appendChild(openButton);
+            actionsCell.appendChild(ownerDocument.createTextNode(' '));
+            actionsCell.appendChild(releaseButton);
+            row.appendChild(actionsCell);
+
+            tbody.appendChild(row);
+        });
     }
 
     function renderTransferResults(modal, results) {
         const destinationSelect = modal.querySelector('#sisreg-transfer-destination');
         const tbody = modal.querySelector('#sisreg-transfer-results-body');
         const summary = modal.querySelector('#sisreg-transfer-summary');
+        const sortedResults = sortInternacaoResults(results, latestTransferSortState);
 
-        tbody.innerHTML = buildResultsTableRows(results, destinationSelect.value);
+        clearElementChildren(tbody);
+        if (sortedResults.length === 0) {
+            appendEmptyStateRow(tbody, 6, 'Nenhum paciente encontrado.');
+        } else {
+            appendTransferResultRows(tbody, sortedResults, destinationSelect.value);
+        }
         summary.textContent = `${results.length} paciente(s) encontrado(s).`;
+        updateSortableHeaderLabels(modal, '[data-sisreg-transfer-sort-key]', latestTransferSortState);
     }
 
     function setTransferFeedback(modal, message = '', isError = false) {
@@ -975,12 +1167,19 @@
         const pager = modal.querySelector('#sisreg-release-pager');
         const prevButton = modal.querySelector('#sisreg-release-prev');
         const nextButton = modal.querySelector('#sisreg-release-next');
+        const sortedResults = sortInternacaoResults(results, latestReleaseSortState);
 
-        tbody.innerHTML = buildReleaseResultsTableRows(results);
+        clearElementChildren(tbody);
+        if (sortedResults.length === 0) {
+            appendEmptyStateRow(tbody, 7, 'Nenhum paciente encontrado.');
+        } else {
+            appendReleaseResultRows(tbody, sortedResults);
+        }
         summary.textContent = `${results.length} paciente(s) nesta pagina.`;
         pager.textContent = `Pagina ${latestReleaseSearchState.currentPage + 1} de ${latestReleaseSearchState.totalPages}`;
         prevButton.disabled = latestReleaseSearchState.currentPage <= 0;
         nextButton.disabled = latestReleaseSearchState.currentPage >= latestReleaseSearchState.totalPages - 1;
+        updateSortableHeaderLabels(modal, '[data-sisreg-release-sort-key]', latestReleaseSortState);
     }
 
     function setReleaseAihCell(modal, codSolicitacaoFicha, value) {
@@ -992,12 +1191,24 @@
             return;
         }
 
-        cell.innerHTML = `
-            <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-                <span>${value}</span>
-                <button type="button" data-sisreg-copy-aih="${codSolicitacaoFicha}" data-sisreg-copy-aih-value="${value}" style="padding:2px 6px;">Copiar</button>
-            </div>
-        `;
+        const ownerDocument = cell.ownerDocument;
+        const wrapper = ownerDocument.createElement('div');
+        wrapper.style.cssText = 'display:flex; align-items:center; gap:6px; flex-wrap:wrap;';
+
+        const valueNode = ownerDocument.createElement('span');
+        valueNode.textContent = value;
+
+        const button = ownerDocument.createElement('button');
+        button.type = 'button';
+        button.setAttribute('data-sisreg-copy-aih', codSolicitacaoFicha);
+        button.setAttribute('data-sisreg-copy-aih-value', value);
+        button.style.cssText = 'padding:2px 6px;';
+        button.textContent = 'Copiar';
+
+        clearElementChildren(cell);
+        cell.appendChild(wrapper);
+        wrapper.appendChild(valueNode);
+        wrapper.appendChild(button);
     }
 
     async function copyTextToClipboard(value) {
@@ -1132,11 +1343,11 @@
         modal.querySelector('#sisreg-release-detail-view').style.display = 'none';
     }
 
-    function showReleaseDetailView(modal, title, html) {
+    function showReleaseDetailView(modal, title, contentNode) {
         modal.querySelector('#sisreg-release-results-view').style.display = 'none';
         modal.querySelector('#sisreg-release-detail-view').style.display = 'block';
         modal.querySelector('#sisreg-release-detail-title').textContent = title;
-        modal.querySelector('#sisreg-release-detail-content').innerHTML = html;
+        modal.querySelector('#sisreg-release-detail-content').replaceChildren(contentNode);
     }
 
     async function openFichaFromReleaseResult(modal, codSolicitacaoFicha) {
@@ -1309,10 +1520,10 @@
                     <table style="width:100%; border-collapse:collapse; background:#fff;">
                         <thead>
                             <tr style="background:#d8dedc;">
-                                <th style="padding:6px; border:1px solid #c9d2d8; text-align:left;">Dt. Internacao</th>
-                                <th style="padding:6px; border:1px solid #c9d2d8; text-align:left;">Paciente</th>
-                                <th style="padding:6px; border:1px solid #c9d2d8; text-align:left;">Procedimento</th>
-                                <th style="padding:6px; border:1px solid #c9d2d8; text-align:left;">Clinica</th>
+                                <th data-sisreg-transfer-sort-key="dt_internacao" data-sisreg-sort-key="dt_internacao" data-sisreg-sort-label="Dt. Internacao" style="padding:6px; border:1px solid #c9d2d8; text-align:left; cursor:pointer; user-select:none;">Dt. Internacao</th>
+                                <th data-sisreg-transfer-sort-key="paciente" data-sisreg-sort-key="paciente" data-sisreg-sort-label="Paciente" style="padding:6px; border:1px solid #c9d2d8; text-align:left; cursor:pointer; user-select:none;">Paciente</th>
+                                <th data-sisreg-release-sort-key="procedimento" data-sisreg-sort-key="procedimento" data-sisreg-sort-label="Procedimento" style="padding:6px; border:1px solid #c9d2d8; text-align:left; cursor:pointer; user-select:none;">Procedimento</th>
+                                <th data-sisreg-release-sort-key="clinica" data-sisreg-sort-key="clinica" data-sisreg-sort-label="Clinica" style="padding:6px; border:1px solid #c9d2d8; text-align:left; cursor:pointer; user-select:none;">Clinica</th>
                                 <th style="padding:6px; border:1px solid #c9d2d8; text-align:left;">Solicitacao</th>
                                 <th style="padding:6px; border:1px solid #c9d2d8; text-align:left;">Acoes</th>
                             </tr>
@@ -1387,6 +1598,19 @@
             }
         });
 
+        modal.querySelector('thead').addEventListener('click', (event) => {
+            const header = event.target.closest('[data-sisreg-transfer-sort-key]');
+            if (!header) {
+                return;
+            }
+
+            latestTransferSortState = toggleSortState(
+                latestTransferSortState,
+                header.getAttribute('data-sisreg-transfer-sort-key')
+            );
+            renderTransferResults(modal, latestTransferResults);
+        });
+
         return modal;
     }
 
@@ -1456,10 +1680,10 @@
                     <table style="width:100%; border-collapse:collapse; background:#fff;">
                         <thead>
                             <tr style="background:#d8dedc;">
-                                <th style="padding:6px; border:1px solid #c9d2d8; text-align:left;">Dt. Internacao</th>
-                                <th style="padding:6px; border:1px solid #c9d2d8; text-align:left;">Paciente</th>
-                                <th style="padding:6px; border:1px solid #c9d2d8; text-align:left;">Procedimento</th>
-                                <th style="padding:6px; border:1px solid #c9d2d8; text-align:left;">Clinica</th>
+                                <th data-sisreg-release-sort-key="dt_internacao" data-sisreg-sort-key="dt_internacao" data-sisreg-sort-label="Dt. Internacao" style="padding:6px; border:1px solid #c9d2d8; text-align:left; cursor:pointer; user-select:none;">Dt. Internacao</th>
+                                <th data-sisreg-release-sort-key="paciente" data-sisreg-sort-key="paciente" data-sisreg-sort-label="Paciente" style="padding:6px; border:1px solid #c9d2d8; text-align:left; cursor:pointer; user-select:none;">Paciente</th>
+                                <th data-sisreg-release-sort-key="procedimento" data-sisreg-sort-key="procedimento" data-sisreg-sort-label="Procedimento" style="padding:6px; border:1px solid #c9d2d8; text-align:left; cursor:pointer; user-select:none;">Procedimento</th>
+                                <th data-sisreg-release-sort-key="clinica" data-sisreg-sort-key="clinica" data-sisreg-sort-label="Clinica" style="padding:6px; border:1px solid #c9d2d8; text-align:left; cursor:pointer; user-select:none;">Clinica</th>
                                 <th style="padding:6px; border:1px solid #c9d2d8; text-align:left;">Solicitacao</th>
                                 <th style="padding:6px; border:1px solid #c9d2d8; text-align:left;">AIH</th>
                                 <th style="padding:6px; border:1px solid #c9d2d8; text-align:left;">Acoes</th>
@@ -1539,6 +1763,19 @@
             if (releaseButton) {
                 await processRelease(modal, releaseButton.getAttribute('data-sisreg-release-one'));
             }
+        });
+
+        modal.querySelector('thead').addEventListener('click', (event) => {
+            const header = event.target.closest('[data-sisreg-release-sort-key]');
+            if (!header) {
+                return;
+            }
+
+            latestReleaseSortState = toggleSortState(
+                latestReleaseSortState,
+                header.getAttribute('data-sisreg-release-sort-key')
+            );
+            renderReleaseResults(modal, latestReleaseResults);
         });
 
         return modal;
